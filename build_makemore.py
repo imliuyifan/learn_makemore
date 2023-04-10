@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 # read names.txt file
@@ -51,7 +52,7 @@ idx = torch.multinomial(p, num_samples=1, replacement=True, generator=g).item()
 
 # print(itos[idx])
 
-P = N.float()
+P = (N+1).float()
 P /= P.sum(dim=1, keepdim=True)
 
 g = torch.Generator().manual_seed(2147483647)
@@ -72,7 +73,9 @@ for i in range(5):
 
 
 log_likelihood = 0.0
-for w in words[:3]:
+n = 0
+
+for w in ["andrejq"]:
     chs = ['.'] + list(w) + ['.']
     for ch1, ch2 in zip(chs, chs[1:]):
         ix1 = stoi[ch1]
@@ -80,6 +83,31 @@ for w in words[:3]:
         prob = P[ix1, ix2]
         logprob = torch.log(prob)
         log_likelihood += logprob
+        n += 1
         print(f'{ch1}{ch2}: {prob: .4f} {logprob:.4f}')
 
-print("test git push")
+print(f"{log_likelihood=}")
+# use negative log likelihood
+nll = -log_likelihood
+print(f"{nll=}")
+print(f"{nll/n=}")
+
+# create a training set of bigrams (x,y)
+xs, ys = [], []
+
+for w in words[:1]:
+    chs = ['.'] + list(w) + ['.']
+    for ch1, ch2 in zip(chs, chs[1:]):
+        ix1 = stoi[ch1]
+        ix2 = stoi[ch2]
+        print(ch1, ch2)
+        xs.append(ix1)
+        ys.append(ix2)
+
+xs = torch.tensor(xs)
+ys = torch.tensor(ys)
+
+
+xenc = F.one_hot(xs, num_classes=27)
+plt.imshow(xenc)
+plt.savefig("m1.png")
