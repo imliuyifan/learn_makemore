@@ -82,3 +82,4 @@ for w in words[:3]:
         log_likelihood += logprob
         print(f'{ch1}{ch2}: {prob: .4f} {logprob:.4f}')
 
+print("test git push")
