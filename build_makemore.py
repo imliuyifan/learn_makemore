@@ -108,6 +108,14 @@ xs = torch.tensor(xs)
 ys = torch.tensor(ys)
 
 
-xenc = F.one_hot(xs, num_classes=27)
+# create one-hot encoding and then cast to float32
+xenc = F.one_hot(xs, num_classes=27).float()
 plt.imshow(xenc)
 plt.savefig("m1.png")
+
+W = torch.randn((27, 27))
+
+logits = xenc @ W # log-counts
+counts = logits.exp() # equivalent N
+prob = counts / counts.sum(dim=1, keepdim=True)
+
