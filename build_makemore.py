@@ -113,9 +113,113 @@ xenc = F.one_hot(xs, num_classes=27).float()
 plt.imshow(xenc)
 plt.savefig("m1.png")
 
-W = torch.randn((27, 27))
+# random initialize the weight matrix
+g = torch.Generator().manual_seed(2147483647)
+W = torch.randn((27, 27), generator=g)
 
 logits = xenc @ W # log-counts
 counts = logits.exp() # equivalent N
-prob = counts / counts.sum(dim=1, keepdim=True)
+probs = counts / counts.sum(dim=1, keepdim=True)
+# btw: the last 2 lines here are together called a `softmax`
+
+nlls = torch.zeros(5)
+for i in range(5):
+    # i-th bigram
+    x = xs[i].item() # input character index
+    y = ys[i].item() # label character index
+    print('-------')
+    print(f'bigram example {i+1}:{itos[x]}{itos[y]} (indexes {x},{y})')
+    print('input to the neural net:', x)
+    print('output probabilities from the neural net:', probs[i])
+    print('label (actual next character):', y)
+    p = probs[i, y]
+    print('probability assigned by the net to the correct character', p.item())
+    logp = torch.log(p)
+    print('log likelihood:', logp.item())
+    nll = -logp
+    print('negative log likelihood:', nll.item())
+    nlls[i] = nll
+
+print("==========")
+print('average negative log likelihood, i.e. loss =', nlls.mean().item())
+
+# -------- !!! OPTIMIZATION (manual test)!!! --------
+# random initialize the weight matrix
+g = torch.Generator().manual_seed(2147483647)
+W = torch.randn((27, 27), generator=g, requires_grad=True)
+
+# forward pass
+xenc = F.one_hot(xs, num_classes=27).float() # input to the network, one-hot encoding
+logits = xenc @ W # predict log-counts
+counts = logits.exp() # counts, equivalent N
+probs = counts / counts.sum(dim=1, keepdim=True) # probabilities for next character
+loss = -probs[torch.arange(5), ys].log().mean() # loss: negative log likelihood
+
+print(loss.item())
+
+# backward pass
+W.grad = None # set to zero the gradient
+loss.backward() # compute the gradient
+
+# update the weights
+W.data += -0.1 * W.grad
+
+# -------- !!! OPTIMIZATION !!! --------
+# create the dataset
+xs, ys = [], []
+for w in words:
+    chs = ['.'] + list(w) + ['.']
+    for ch1, ch2 in zip(chs, chs[1:]):
+        ix1 = stoi[ch1]
+        ix2 = stoi[ch2]
+        xs.append(ix1)
+        ys.append(ix2)
+xs = torch.tensor(xs)
+ys = torch.tensor(ys)
+num = xs.nelement()
+print('number of examples:', num)
+
+# initialize the 'network'
+g = torch.Generator().manual_seed(2147483647)
+W = torch.randn((27, 27), generator=g, requires_grad=True)
+
+
+# gradient descent
+for k in range(201):
+    # forward pass
+    xenc = F.one_hot(xs, num_classes=27).float() # input to the network, one-hot encoding
+    logits = xenc @ W # predict log-counts
+    counts = logits.exp() # counts, equivalent N
+    probs = counts / counts.sum(dim=1, keepdim=True) # probabilities for next character
+    # loss: negative log likelihood + regularization
+    loss = -probs[torch.arange(num), ys].log().mean() + 0.01*(W**2).mean() 
+    print(f'epoch {k+1}: loss = {loss.item()}')
+    # backward pass
+    W.grad = None # set to zero the gradient
+    loss.backward() # compute the gradient
+    # update the weights
+    W.data += -50 * W.grad
+
+# finally, sample from the 'neural net' model
+g = torch.Generator().manual_seed(2147483647)
+
+for i in range(5):
+    out = []
+    ix = 0
+    while True:
+        # ----------
+        # BEFORE:
+        p = P[ix]
+        # ----------
+        # NOW:
+        # xenc = F.one_hot(torch.tensor([ix]), num_classes=27).float()
+        # logits = xenc @ W # predict log-counts
+        # counts = logits.exp() # counts, equivalent N
+        # p = counts / counts.sum(dim=1, keepdim=True) # probabilities for next character
+        # output sampled result
+        ix = torch.multinomial(p, num_samples=1, replacement=True, generator=g).item()
+        out.append(itos[ix])
+        if ix == 0:
+            break
+    print(''.join(out))
 
