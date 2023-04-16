@@ -44,21 +44,4 @@ sum(p.nelement() for p in parameters)
 emb = C[X]
 h = torch.tanh(emb.view(-1, 6) @ W1 + b1)
 logits = h @ W2 + b2
-# compute the loss manually (multiple tensors created)
-# counts = logits.exp()
-# prob = counts / counts.sum(dim=1, keepdim=True)
-# compute the loss
-# loss = -prob[torch.arange(32), Y].log().mean()
-# print(loss)
-# use F.cross_entropy to compute the loss 
-# reasons for using this function:
-# 1. fused kernel used internally, simpler math calcs in backprop
-# 2. numerical stability
 loss = F.cross_entropy(logits, Y)
-print(loss)
-# test stability of cross entropy
-# logits = torch.tensor([-5, -3, 0, 5])
-# counts = logits.exp()
-# probs = counts / counts.sum()
-# print(probs)
-
