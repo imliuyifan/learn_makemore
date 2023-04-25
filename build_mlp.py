@@ -27,25 +27,27 @@ def build_dataset(words):
         context = [0] * block_size
         for ch in w + '.':
             ix = stoi[ch]
-            X.append(context[:])
+            X.append(context)
             Y.append(ix)
             # print(''.join([itos[i] for i in context]), '--->', itos[ix])
             context = context[1:] + [ix] # crop and append
     # convert to tensors
-    X = torch.tensor(X, dtype=torch.long)
-    Y = torch.tensor(Y, dtype=torch.long)
+    X = torch.tensor(X)
+    Y = torch.tensor(Y)
     print(X.shape, Y.shape)
     return X, Y
 
 import random
 random.seed(42)
 random.shuffle(words)
-n1 = int(len(words) * 0.8)
-n2 = int(len(words) * 0.9)
+n1 = int(0.8*len(words))
+n2 = int(0.9*len(words))
 
 Xtr, Ytr = build_dataset(words[:n1])      # 80%
 Xdev, Ydev = build_dataset(words[n1:n2])  # 10%
 Xte, Yte = build_dataset(words[n2:])      # 10%
+
+words[:5]
 
 # MLP revisited
 n_embd = 10 # the dimensionality of the character embedding vector
@@ -53,7 +55,6 @@ n_hidden = 200 # the number of neurons in the hidden layer of the MLP
 
 g = torch.Generator().manual_seed(2147483647) # for reproducibility
 C = torch.randn((vocab_size, n_embd),             generator=g)
-
 # construct the hidden layer
 W1 = torch.randn((n_embd * block_size, n_hidden), generator=g)
 b1 = torch.randn(n_hidden,                        generator=g)
@@ -74,7 +75,7 @@ max_steps = 200000
 batch_size = 32
 lossi = []
 
-for i in range(max_steps):
+for i in range(5):
     # mini-batch construct
     ix = torch.randint(0, Xtr.shape[0], (batch_size,), generator=g)
     Xb, Yb = Xtr[ix], Ytr[ix] # batch X,Y
@@ -84,14 +85,14 @@ for i in range(max_steps):
     hpreact = embcat @ W1 + b1 # hidden layer pre-activation
     h = torch.tanh(hpreact) # hidden layer 
     logits = h @ W2 + b2 # output layer
-    loss = F.cross_entropy(logits, Ytr[ix]) # loss function
+    loss = F.cross_entropy(logits, Yb) # loss function
     # print(loss.item())
     # backward pass
     for p in parameters:
         p.grad = None
     loss.backward()
     # update parameters
-    lr = 0.1 if i < 10000 else 0.01
+    lr = 0.1 if i < 100000 else 0.01
     for p in parameters:
         p.data += -lr * p.grad
     # track stats
@@ -139,3 +140,4 @@ for _ in range(20):
         if ix == 0:
             break
     print(''.join([itos[i] for i in out])) # decode and print the generated word
+
