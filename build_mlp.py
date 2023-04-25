@@ -75,7 +75,7 @@ max_steps = 200000
 batch_size = 32
 lossi = []
 
-for i in range(5):
+for i in range(max_steps):
     # mini-batch construct
     ix = torch.randint(0, Xtr.shape[0], (batch_size,), generator=g)
     Xb, Yb = Xtr[ix], Ytr[ix] # batch X,Y
